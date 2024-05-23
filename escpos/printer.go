@@ -2,6 +2,7 @@ package escpos
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -83,9 +84,12 @@ func NewUSB() (*Printer, error) {
 
 	p.ctx.Debug(10)
 	dev, err := p.ctx.OpenDeviceWithVIDPID(0x04b8, 0x0e02)
-
 	if err != nil {
 		return nil, err
+	}
+
+	if dev == nil {
+		return nil, errors.New("could not find compatible ESCPOS device attached via USB")
 	}
 
 	p.dev = dev
