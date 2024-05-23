@@ -9,18 +9,27 @@ import (
 	"time"
 )
 
+const CDBL_API_URL = "https://api.codeable.io"
+
 var cache = []int{}
 
 type ProjectClient struct {
-	Token string
+	authToken string
 }
 
+func withJsonHeaders(req *http.Request) *http.Request {
+	req.Header.Add("Accept", "application/json, application/vnd.codeable.v1")
+
+	return req
+}
 func (a *ProjectClient) getProjects() []Project {
 	client := &http.Client{}
 
-	req, _ := http.NewRequest("GET", "https://api.codeable.io/experts/projects/new-projects?page=1", nil)
-	req.Header.Add("Authorization", "Bearer "+a.Token)
-	req.Header.Add("Accept", "application/json, application/vnd.codeable.v1")
+	req, _ := http.NewRequest("GET", CDBL_API_URL+"/experts/projects/new-projects?page=1", nil)
+
+	withJsonHeaders(req)
+
+	req.Header.Add("Authorization", "Bearer "+a.authToken)
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -31,6 +40,7 @@ func (a *ProjectClient) getProjects() []Project {
 		log.Println(resp.StatusCode)
 		return nil
 	}
+
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		panic(err)
@@ -50,6 +60,7 @@ func (a *ProjectClient) getNewProjects() []Project {
 		if cached {
 			continue
 		}
+
 		cache = append(cache, project.ID)
 		projects = append(projects, project)
 	}
@@ -57,7 +68,7 @@ func (a *ProjectClient) getNewProjects() []Project {
 	return projects
 }
 
-func (a *ProjectClient) poll(ch chan Project) {
+func (a *ProjectClient) poll(ch chan Project, interval int) {
 	// Load, cache and discard the first results
 	_ = a.getNewProjects()
 
@@ -68,13 +79,12 @@ func (a *ProjectClient) poll(ch chan Project) {
 		if len(projects) > 0 {
 
 			log.Printf("Found %d Projects", len(projects))
-
 			for _, project := range projects {
 				ch <- project
 			}
 		}
 
-		time.Sleep(5 * time.Minute)
+		time.Sleep(time.Duration(interval) * time.Minute)
 	}
 }
 
@@ -85,7 +95,7 @@ func (a *ProjectClient) StartPoll(interval int) chan Project {
 		panic("Interval must be greater than 0")
 	}
 
-	go a.poll(ch)
+	go a.poll(ch, interval)
 
 	return ch
 }
