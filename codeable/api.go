@@ -57,23 +57,29 @@ func (a *ProjectClient) getNewProjects() []Project {
 	return projects
 }
 
-func (a *ProjectClient) poll(ch chan []Project) {
+func (a *ProjectClient) poll(ch chan Project) {
 	// Load, cache and discard the first results
 	_ = a.getNewProjects()
 
 	for {
 		log.Print("Scanning for new projects")
 		projects := a.getNewProjects()
+
 		if len(projects) > 0 {
-			ch <- projects
+
+			log.Printf("Found %d Projects", len(projects))
+
+			for _, project := range projects {
+				ch <- project
+			}
 		}
 
 		time.Sleep(5 * time.Minute)
 	}
 }
 
-func (a *ProjectClient) StartPoll(interval int) chan []Project {
-	ch := make(chan []Project)
+func (a *ProjectClient) StartPoll(interval int) chan Project {
+	ch := make(chan Project, 24)
 
 	if interval <= 0 {
 		panic("Interval must be greater than 0")

@@ -41,11 +41,12 @@ func main() {
 	}
 
 	for {
-		projects := api.StartPoll(30)
-		log.Printf("Received %d new projects", len(<-projects))
-		for _, project := range <-projects {
-			fmt.Println(project)
-			printProject(printer, project)
-		}
+		ch := api.StartPoll(30)
+		project := <-ch
+
+		log.Printf("Received new project %d", project.ID)
+		fmt.Println(project)
+		printProject(printer, project)
+
 	}
 }

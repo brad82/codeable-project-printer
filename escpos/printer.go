@@ -49,21 +49,24 @@ func (p *Printer) Flush() error {
 
 	defer done()
 
-	// Open an OUT endpoint.
 	ep, err := intf.OutEndpoint(1)
 	if err != nil {
 		return err
 	}
+
 	for {
 		output := p.buf.Next(64)
+
 		if len(output) == 0 {
-			ep.Write([]byte(CTL_LF))
-			break
+			output = []byte(CTL_LF)
 		}
 
-		ep.Write(output)
+		_, err := ep.Write(output)
+
+		if err != nil {
+			return err
+		}
 	}
-	return nil
 }
 
 func NewUSB() (*Printer, error) {
@@ -73,12 +76,16 @@ func NewUSB() (*Printer, error) {
 		WIDTH: 42,
 	}
 
+	p.ctx.Debug(10)
 	dev, err := p.ctx.OpenDeviceWithVIDPID(0x04b8, 0x0e02)
+
 	if err != nil {
 		return nil, err
 	}
 
 	p.dev = dev
+	p.dev.SetAutoDetach(true)
+
 	return &p, nil
 }
 
