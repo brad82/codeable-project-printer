@@ -4,49 +4,55 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 
 	codeable "github.com/brad82/codeable-project-printer/codeable"
 	"github.com/brad82/codeable-project-printer/escpos"
+	"github.com/joho/godotenv"
 )
 
-func printProject(receipt *escpos.Printer, p codeable.Project) {
-	receipt.Rule("*")
-	receipt.Sprintln("ID:     %d", p.ID)
-	receipt.Sprintln("Client: %s (%.1f)", p.Client.FullName, p.Client.AverageReviewRating)
-	receipt.Sprintln("Counts: %d Comments | %d Estimates", p.PublicCommentsCount, p.EstimatesCount)
-	receipt.Sprintln("Budget: %s", p.Budget)
-	receipt.Rule("=")
-	receipt.Sprintln(p.Title)
-	receipt.Rule("=")
-	receipt.Sprintln(p.PostedDate.String())
-	receipt.Rule("*")
-	receipt.Feed(10).Cut()
-
-	receipt.Flush()
-}
-
 func main() {
-	if len(os.Args) != 2 {
-		fmt.Printf("Usage %s api_token", os.Args[0])
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
 		return
 	}
 
 	printer, err := escpos.NewUSB()
 	if err != nil {
+		log.Fatal("Could not detect supported ESCPOS printer. Check USB connection and try again")
+		return
+	}
+
+	api := &codeable.ProjectClient{}
+
+	loginRequest := codeable.LoginRequest{
+		Email:    os.Getenv("CDBL_EMAIL"),
+		Password: os.Getenv("CDBL_PASSWORD"),
+	}
+
+	if !loginRequest.IsValid() {
+		log.Fatal("Invalid login details provided. Check CDBL_EMAIL | CDBL_PASSWORD env")
+	}
+
+	log.Print("Getting login token")
+	err = api.Login(loginRequest)
+	if err != nil {
 		panic(err)
 	}
 
-	api := &codeable.ProjectClient{
-		Token: os.Args[1],
+	interval, err := strconv.Atoi(os.Getenv("SCAN_INTERVAL"))
+	if interval < 0 || err != nil {
+		log.Print("Invalid scan interval set, using default of 5 minutes")
+		interval = 5
 	}
 
 	for {
-		ch := api.StartPoll(30)
+		ch := api.StartPoll(interval)
 		project := <-ch
 
 		log.Printf("Received new project %d", project.ID)
 		fmt.Println(project)
 		printProject(printer, project)
-
 	}
 }
