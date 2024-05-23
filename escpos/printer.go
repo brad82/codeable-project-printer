@@ -62,11 +62,16 @@ func (p *Printer) Flush() error {
 		}
 
 		_, err := ep.Write(output)
-
 		if err != nil {
 			return err
 		}
+
+		if len(output) == 0 {
+			break
+		}
 	}
+
+	return nil
 }
 
 func NewUSB() (*Printer, error) {
