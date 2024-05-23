@@ -8,16 +8,10 @@ import (
 
 	codeable "github.com/brad82/codeable-project-printer/codeable"
 	"github.com/brad82/codeable-project-printer/escpos"
-	"github.com/joho/godotenv"
+	_ "github.com/joho/godotenv/autoload"
 )
 
 func main() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
-		return
-	}
-
 	printer, err := escpos.NewUSB()
 	if err != nil {
 		log.Fatal("Could not detect supported ESCPOS printer. Check USB connection and try again")
@@ -33,6 +27,7 @@ func main() {
 
 	if !loginRequest.IsValid() {
 		log.Fatal("Invalid login details provided. Check CDBL_EMAIL | CDBL_PASSWORD env")
+		return
 	}
 
 	log.Print("Getting login token")
